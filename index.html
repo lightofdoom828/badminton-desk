@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Badminton Paper Desk</title>
+<style>
+  :root { --bg: #030504; --panel: #0a110d; --line: #18261d; --text: #a9bbb0; --head: #f0f7f2; --accent: #22e07a; --bad: #ff5d5d; --warn: #f5c542; --dim: #5f7366; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px; }
+  h1 { font-size: 20px; letter-spacing: .08em; text-transform: uppercase; color: var(--head); margin: 0; }
+  h1 span { color: var(--accent); }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--dim); }
+  .chip.warn { color: var(--warn); border-color: #4a3d12; }
+  .when { margin-left: auto; font-size: 13px; color: var(--dim); }
+  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--head); margin: 30px 0 10px; }
+  h2 small { text-transform: none; letter-spacing: 0; color: var(--dim); font-weight: 400; margin-left: 8px; }
+  .banner { background: #14110a; border: 1px solid #4a3d12; color: #e8d9a8; border-radius: 6px; padding: 12px 14px; margin-bottom: 8px; }
+  .banner b { color: var(--warn); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+  .kpi .l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  .kpi .v { font-size: 22px; color: var(--head); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .kpi .s { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .pos { color: var(--accent) !important; } .neg { color: var(--bad) !important; }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); font-weight: 600; background: #070c09; position: sticky; top: 0; }
+  th:first-child, td:first-child { text-align: left; }
+  td.l { text-align: left; }
+  tr:last-child td { border-bottom: 0; }
+  .empty { padding: 14px; color: var(--dim); }
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+  .chart svg { width: 100%; height: 260px; display: block; }
+  .legend { font-size: 12px; color: var(--dim); margin: 6px 4px 0; }
+  .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 6px 0 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } .when { margin-left: 0; width: 100%; } }
+  dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
+  dt { color: var(--head); } dd { margin: 0; }
+  #msg { text-align: center; padding: 80px 16px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Badminton <span>Paper Desk</span></h1>
+    <span class="chip warn">Paper only · no real bets</span>
+    <span class="when" id="when"></span>
+  </header>
+  <div id="msg">Opening…</div>
+  <div id="page" hidden></div>
+</main>
+<script>
+// Public page, private numbers: data.bin is locked with the key in the share link (?k=...). publish.py on the machine
+// that runs the model writes and pushes it. Layout: 'BDS1' + 12-byte nonce + AES-GCM(zlib(JSON)),
+// AES key = SHA-256('badminton-desk-snap|' + k).
+async function unlock(buf, k) {
+  const b = new Uint8Array(buf);
+  if (String.fromCharCode(...b.slice(0, 4)) !== 'BDS1') throw new Error('not a data file');
+  const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('badminton-desk-snap|' + k));
+  const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  const zipped = await crypto.subtle.decrypt({name: 'AES-GCM', iv: b.slice(4, 16)}, key, b.slice(16));
+  return JSON.parse(await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('deflate'))).text());
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const num = (x, d = 2) => x == null ? '–' : Number(x).toFixed(d);
+const pct = (x, d = 1) => x == null ? '–' : (x >= 0 ? '+' : '') + (100 * x).toFixed(d) + '%';
+const sgn = (x, d = 2) => x == null ? '–' : (x >= 0 ? '+' : '') + Number(x).toFixed(d);
+const cls = x => x == null ? '' : x > 0 ? 'pos' : x < 0 ? 'neg' : '';
+const melb = (v, opts) => new Date(typeof v === 'number' ? v * 1000 : v).toLocaleString('en-AU',
+  Object.assign({timeZone: 'Australia/Melbourne', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false}, opts || {}));
+
+function card(label, value, sub, c) {
+  return `<div class="kpi"><div class="l">${label}</div><div class="v ${c || ''}">${value}</div><div class="s">${sub || '&nbsp;'}</div></div>`;
+}
+
+function kpis(k) {
+  return '<div class="kpis">'
+    + card('Bets fired', k.fired, `${k.settled} settled · ${k.open} open`)
+    + card('Won – lost', k.settled ? `${k.won} – ${k.settled - k.won}` : '–', k.win_rate == null ? '' : `win rate ${pct(k.win_rate).replace('+', '')}`)
+    + card('P&amp;L (units)', sgn(k.pnl), `${num(k.staked)} u staked`, cls(k.pnl))
+    + card('POT', pct(k.pot), k.pot_t == null ? 'profit on turnover' : `t = ${num(k.pot_t)}`, cls(k.pot))
+    + card('Avg edge', pct(k.avg_edge), 'model p − 1/price')
+    + card('Avg EV per unit', pct(k.avg_ev), `avg price ${num(k.avg_price)}`)
+    + card('EV taken (u)', sgn(k.ev_taken), 'settled bets; compare P&amp;L', cls(k.ev_taken))
+    + card('Log loss vs close', k.ll_gain == null ? '–' : sgn(k.ll_gain, 4), k.ll_gain_t == null ? 'LL(close) − LL(model), + = model better' : `t = ${num(k.ll_gain_t)} · ${k.ll_n} bets`, cls(k.ll_gain))
+    + card('Model LL', num(k.ll_model, 4), k.ll_close == null ? '' : `close ${num(k.ll_close, 4)} · base ${num(k.ll_base, 4)}`)
+    + '</div>';
+}
+
+function chart(curve) {
+  if (!curve.length) return '<div class="chart"><div class="empty">The chart starts with the first settled live bet.</div></div>';
+  const W = 1000, H = 260, P = 34, xs = curve.map(c => c[0]), ys = curve.flatMap(c => [c[1], c[2]]).concat([0]);
+  const x0 = 0, x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), dy = (y1 - y0) || 1;
+  const X = x => P + (W - 2 * P) * (x - x0) / ((x1 - x0) || 1), Y = y => H - P + 6 - (H - 2 * P) * (y - y0) / dy;
+  const path = i => 'M' + [[0, 0, 0]].concat(curve).map(c => `${X(c[0]).toFixed(1)},${Y(c[i]).toFixed(1)}`).join('L');
+  const ticks = [y0, (y0 + y1) / 2, y1].map(v => `<text x="4" y="${Y(v) + 4}" fill="#5f7366" font-size="12">${sgn(v, 1)}</text>`).join('');
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Cumulative P&L and EV">
+    <line x1="${P}" x2="${W - P}" y1="${Y(0)}" y2="${Y(0)}" stroke="#18261d"/>${ticks}
+    <path d="${path(2)}" fill="none" stroke="#5f7366" stroke-width="2" stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>
+    <path d="${path(1)}" fill="none" stroke="#22e07a" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+    <text x="${W - P}" y="${H - 6}" fill="#5f7366" font-size="12" text-anchor="end">${x1} settled bets</text></svg>
+    <div class="legend"><i style="background:#22e07a"></i>P&amp;L (units)<i style="background:#5f7366"></i>EV taken (units)</div></div>`;
+}
+
+function groupTable(rows, first) {
+  if (!rows.length) return '<div class="wrap"><div class="empty">No bets yet.</div></div>';
+  return '<div class="wrap"><table><thead><tr>' + [first, 'Bets', 'Settled', 'W', 'P&amp;L', 'POT', 't', 'Avg edge', 'Avg EV', 'LL vs close']
+    .map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' + rows.map(g => `<tr><td>${esc(g.name)}</td><td>${g.fired}</td><td>${g.settled}</td><td>${g.won}</td>
+      <td class="${cls(g.pnl)}">${sgn(g.pnl)}</td><td class="${cls(g.pot)}">${pct(g.pot)}</td><td>${num(g.pot_t)}</td>
+      <td>${pct(g.avg_edge)}</td><td>${pct(g.avg_ev)}</td><td class="${cls(g.ll_gain)}">${g.ll_gain == null ? '–' : sgn(g.ll_gain, 4)}</td></tr>`).join('')
+    + '</tbody></table></div>';
+}
+
+function betTable(rows, settled) {
+  if (!rows.length) return `<div class="wrap"><div class="empty">${settled ? 'No settled bets yet.' : 'No open bets.'}</div></div>`;
+  const head = ['Start (Melb)', 'Event', 'Bet', 'v', 'Book', 'Price', 'Model p', 'Edge', 'EV', 'Stake'].concat(settled ? ['Result', 'P&amp;L', 'Close p'] : []);
+  return '<div class="wrap"><table><thead><tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' + rows.map(b => {
+    const edge = b.p - 1 / b.price, ev = b.p * b.price - 1;
+    return `<tr><td>${b.start_utc ? melb(b.start_utc) : '–'}</td><td class="l">${esc(b.tournament)} ${b.discipline ? '· ' + esc(b.discipline) : ''}</td>
+      <td class="l">${esc(b.selection)}</td><td class="l">${esc(b.opponent)}</td><td class="l">${esc(b.book)}</td><td>${num(b.price)}</td>
+      <td>${num(b.p, 3)}</td><td>${pct(edge)}</td><td>${pct(ev)}</td><td>${num(b.stake)}</td>`
+      + (settled ? `<td class="${b.won ? 'pos' : 'neg'}">${b.won ? 'won' : 'lost'}</td><td class="${cls(b.pnl)}">${sgn(b.pnl)}</td><td>${num(b.close_nm_p, 3)}</td>` : '') + '</tr>';
+  }).join('') + '</tbody></table></div>';
+}
+
+function backtest(bt) {
+  return `<div class="kpis">${card('Backtest bets', bt.bets.toLocaleString('en-AU'), 'out of sample')}
+      ${card('Backtest ROI', pct(bt.roi), `± ${(100 * bt.roi_se).toFixed(1)}% (1 s.e.)`, cls(bt.roi))}
+      ${card('Model log loss', num(bt.logloss[2][1], 4), `coin flip ${num(bt.logloss[0][1], 4)}`)}
+      ${card('Market log loss', num(bt.logloss[3][1], 4), `model on same matches ${num(bt.logloss[4][1], 4)}`)}</div>
+    <p style="margin:10px 2px">Rule: ${esc(bt.rule)}. Source: ${esc(bt.source)}. These prices are closing averages, not prices that could have been taken before the start, so live results will differ.</p>
+    <div class="grid2"><div class="wrap"><table><thead><tr><th>Split</th><th>ROI</th></tr></thead><tbody>
+      ${bt.splits.map(s => `<tr><td>${esc(s[0])}</td><td class="${cls(s[1])}">${pct(s[1])}</td></tr>`).join('')}</tbody></table></div>
+    <div class="wrap"><table><thead><tr><th>Predictor</th><th>Log loss</th><th>Matches</th></tr></thead><tbody>
+      ${bt.logloss.map(s => `<tr><td>${esc(s[0])}</td><td>${num(s[1], 4)}</td><td>${s[2].toLocaleString('en-AU')}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function render(d) {
+  document.getElementById('when').textContent = 'Updated ' + melb(d.generated, {weekday: 'short'}) + ' Melbourne';
+  const k = d.kpi, m = d.matches, live = k.fired > 0;
+  let h = live ? '' : `<div class="banner"><b>Live paper trading has not started.</b> No bookmaker price feed for badminton is connected yet, so the model has fired no live bets. The live section fills in by itself once it does. Until then, the backtest at the bottom is the only result.</div>`;
+  h += `<h2>Live paper results <small>flat stake, one unit per bet, settled bets only count</small></h2>${kpis(k)}`;
+  h += `<h2>Last 7 days</h2>${kpis(d.kpi_7d)}`;
+  h += `<h2>Every match, bet or not <small>model vs the no-margin close, home side</small></h2><div class="kpis">
+      ${card('Matches scored', m.n)}${card('Log loss vs close', m.ll_gain == null ? '–' : sgn(m.ll_gain, 4), m.ll_gain_t == null ? '+ = model better' : `t = ${num(m.ll_gain_t)}`, cls(m.ll_gain))}
+      ${card('Model LL', num(m.ll_model, 4), m.ll_close == null ? '' : `close ${num(m.ll_close, 4)} · base ${num(m.ll_base, 4)}`)}</div>`;
+  h += `<h2>Cumulative P&amp;L vs EV taken</h2>${chart(d.curve)}`;
+  h += `<h2>By discipline</h2>${groupTable(d.by_discipline, 'Discipline')}`;
+  h += `<h2>By minimum edge <small>EV per unit at the price taken</small></h2>${groupTable(d.by_edge, 'EV band')}`;
+  h += `<h2>By bookmaker</h2>${groupTable(d.by_book, 'Book')}`;
+  h += `<h2>By month</h2>${groupTable(d.by_month, 'Month')}`;
+  h += `<h2>Open bets</h2>${betTable(d.open, false)}`;
+  h += `<h2>Last 100 settled bets</h2>${betTable(d.recent, true)}`;
+  h += `<h2>Backtest <small>history, not live</small></h2>${backtest(d.backtest)}`;
+  h += `<h2>Definitions</h2><div class="wrap" style="padding:12px 14px"><dl>
+      <dt>Edge</dt><dd>model probability − 1 ÷ price</dd>
+      <dt>EV per unit</dt><dd>model probability × price − 1</dd>
+      <dt>POT</dt><dd>profit on turnover = P&amp;L ÷ units staked; t is the mean return per bet over its standard error</dd>
+      <dt>Log loss vs close</dt><dd>log loss of the bookmakers' no-margin closing probability minus the model's, per bet (or per match); above 0 means the model predicted better than the close</dd>
+      <dt>Base</dt><dd>log loss of always guessing the observed win rate</dd>
+      <dt>EV taken</dt><dd>what the model expected to win on settled bets; P&amp;L should track it over hundreds of bets if the model is right</dd></dl></div>`;
+  const page = document.getElementById('page');
+  page.innerHTML = h; page.hidden = false; document.getElementById('msg').hidden = true;
+}
+
+(async () => {
+  const msg = document.getElementById('msg');
+  const k = new URLSearchParams(location.search).get('k');
+  if (!k) { msg.textContent = 'These results are private. Open them with the full link you were sent.'; return; }
+  try {
+    const r = await fetch('data.bin?t=' + Date.now(), {cache: 'no-store'});
+    if (!r.ok) throw new Error('no data yet');
+    render(await unlock(await r.arrayBuffer(), k));
+  } catch (e) {
+    msg.textContent = e.name === 'OperationError' ? 'This link does not open these results. Check you have the full link.' : 'The results could not be loaded (' + e.message + '). Try again in a minute.';
+  }
+})();
+</script>
+</body>
+</html>
